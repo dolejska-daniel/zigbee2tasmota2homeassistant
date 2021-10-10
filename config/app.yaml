@@ -1,0 +1,17 @@
+
+processors:
+    tele/+/STATE:
+        # Preprocessors and argument extractors
+        - cls: z2t2ha.processors.PayloadParser
+        - cls: z2t2ha.processors.RegexArgumentExtractor
+          args:
+              - mqtt_source_topic
+              - (?P<prefix>[^#+/]+)/(?P<device_id>[^#+/]+)/(?P<endpoint>[^#+/]+)
+        - cls: z2t2ha.processors.DeviceDetailsExtractor
+        # Sensor extractors
+        - cls: z2t2ha.processors.ConnectionSignalQualitySensorExtractor
+        - cls: z2t2ha.processors.ConnectionSignalStrengthSensorExtractor
+        - cls: z2t2ha.processors.SystemVoltageSensorExtractor
+        - cls: z2t2ha.processors.SystemLoadAverageSensorExtractor
+        # Postprocessors
+        - cls: z2t2ha.processors.PublishValidEntities
