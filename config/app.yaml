@@ -1,17 +1,41 @@
 
 processors:
-    tele/+/STATE:
-        # Preprocessors and argument extractors
+    stat/+/STATUS:
+        # Preprocessors, argument and support processors
         - cls: z2t2ha.processors.PayloadParser
         - cls: z2t2ha.processors.RegexArgumentExtractor
           args:
               - mqtt_source_topic
               - (?P<prefix>[^#+/]+)/(?P<device_id>[^#+/]+)/(?P<endpoint>[^#+/]+)
         - cls: z2t2ha.processors.DeviceDetailsExtractor
+
+    tele/+/STATE:
+        # Preprocessors, argument and support processors
+        - cls: z2t2ha.processors.PayloadParser
+        - cls: z2t2ha.processors.RegexArgumentExtractor
+          args:
+              - mqtt_source_topic
+              - (?P<prefix>[^#+/]+)/(?P<device_id>[^#+/]+)/(?P<endpoint>[^#+/]+)
+        - cls: z2t2ha.processors.DeviceLinkExtractor
         # Sensor extractors
         - cls: z2t2ha.processors.ConnectionSignalQualitySensorExtractor
         - cls: z2t2ha.processors.ConnectionSignalStrengthSensorExtractor
         - cls: z2t2ha.processors.SystemVoltageSensorExtractor
         - cls: z2t2ha.processors.SystemLoadAverageSensorExtractor
+        # Postprocessors
+        - cls: z2t2ha.processors.PublishValidEntities
+
+    tele/+/SENSOR:
+        # Preprocessors, argument and support processors
+        - cls: z2t2ha.processors.PayloadParser
+        - cls: z2t2ha.processors.ZigbeeReceivedParser
+        - cls: z2t2ha.processors.DeviceLinkExtractor
+        # Sensor extractors
+        - cls: z2t2ha.processors.BatteryPercentageSensorExtractor
+        - cls: z2t2ha.processors.BatteryVoltageSensorExtractor
+        - cls: z2t2ha.processors.BinarySensorExtractor
+        - cls: z2t2ha.processors.HumiditySensorExtractor
+        - cls: z2t2ha.processors.LinkQualitySensorExtractor
+        - cls: z2t2ha.processors.TemperatureSensorExtractor
         # Postprocessors
         - cls: z2t2ha.processors.PublishValidEntities

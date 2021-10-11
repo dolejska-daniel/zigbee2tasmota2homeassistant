@@ -25,6 +25,7 @@ class ConnectionSignalStrengthSensorExtractor(ProcessorBase):
         entity.icon = "mdi:wifi"
         entity.value_template = "{{ value_json.Wifi.Signal }}"
         entity.unit_of_measurement = "dBm"
+        entity.device_class = "signal_strength"
         entity.state_class = "measurement"
         entity.state_topic = mqtt_source_topic
         entity.unique_id = f"sensor/{mqtt_source_topic}/wifi/signal"
