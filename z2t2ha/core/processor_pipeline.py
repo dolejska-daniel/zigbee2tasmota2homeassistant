@@ -30,43 +30,49 @@ class ProcessorPipeline:
             "entity": Entity(),
         })
 
-    def _get_current_kwargs(self, create_copy: bool = False):
+    def _get_current_kwargs(self, update_with: dict = None, create_copy: bool = False):
         kwargs = self.kwargs
+        kwargs.update(update_with)
+
         if create_copy:
+            kwargs = self.kwargs.copy()
             for key in self.kwargs_to_deepcopy:
                 kwargs[key] = deepcopy(kwargs.get(key, None))
+
+            return kwargs
 
         return kwargs
 
     def process_mqtt_message(self, client: Client, userdata: dict, message: MQTTMessage, *args):
         self._initialize_current_kwargs(client, message)
-        kwargs_list_override: list[dict] = []
+        kwargs_list: list[dict] = [dict()]
 
         logger.debug("trying to run configured processors for message from %s", message.topic)
         for processor_type in list(ProcessorType):
             results = self._run_processors_of_type_and_create_result_generator(
                 processor_type,
                 isolate_results=processor_type in self.processor_types_to_isolate,
-                kwargs_list_override=kwargs_list_override,
+                kwargs_list=kwargs_list,
             )
-            kwargs_list_override = list(results)
+            kwargs_list.extend(list(results))
 
     def _run_processors_of_type_and_create_result_generator(self,
                                                             processor_type: ProcessorType,
-                                                            isolate_results: bool = False,
-                                                            kwargs_list_override: list[dict] = None):
+                                                            kwargs_list: list[dict],
+                                                            isolate_results: bool = False, ):
         if not (processors := self.processors_by_type.get(processor_type, [])):
             return
 
-        logger.debug("running %d processor(s) with type %s", len(processors), processor_type.name)
-        for kwargs in kwargs_list_override or [None]:
+        logger.debug("starting processor pipeline for %s processors", processor_type.name)
+        for kwargs_initial in kwargs_list:
+            logger.debug("running %d %s processor(s)", len(processors), processor_type.name)
             for processor in processors:
-                kwargs = kwargs or self._get_current_kwargs(create_copy=isolate_results)
-                self._run_processor_of_type(processor, kwargs)
+                kwargs = self._get_current_kwargs(update_with=kwargs_initial, create_copy=isolate_results)
+                self._run_processor_of_type(processor, kwargs, kwargs_list)
                 if isolate_results:
                     yield kwargs
 
-    def _run_processor_of_type(self, processor: ProcessorBase, kwargs: dict):
+    def _run_processor_of_type(self, processor: ProcessorBase, kwargs: dict, kwargs_list: list[dict]):
         logger.debug("now running processor %s", processor)
         try:
             state_modification_data = processor.process(**kwargs)
@@ -75,4 +81,12 @@ class ProcessorPipeline:
             logger.exception("an exception occurred while running message processor")
             return
 
-        kwargs.update(state_modification_data if isinstance(state_modification_data, dict) else {})
+        if isinstance(state_modification_data, dict):
+            logger.debug("updating current kwargs state: %s", state_modification_data)
+            kwargs.update(state_modification_data)
+
+        elif isinstance(state_modification_data, list):
+            logger.debug("updating current kwargs list state: %s", state_modification_data)
+            kwargs.update(state_modification_data.pop())
+            kwargs_list.extend(state_modification_data)
+

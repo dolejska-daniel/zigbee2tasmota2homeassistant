@@ -29,6 +29,9 @@ class ProcessorController:
     def setup_configured_processors(self):
         logger.debug("setting up configured topic processors")
         for topic_pattern, processor_configurations in self._mapping_configuration.items():
+            logger.debug("parsing %d processor configurations for topic %s",
+                         len(processor_configurations), topic_pattern)
+
             for processor_configuration in processor_configurations:
                 cls_name = processor_configuration.pop("cls", None)
                 if (cls := self._return_only_valid_processor_class(cls_name)) is None:
